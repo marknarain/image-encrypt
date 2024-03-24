@@ -1,4 +1,3 @@
-#pragma once
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -6,9 +5,12 @@
 #include <cstdlib>
 #include <random>
 
-#pragma pack(push, 1)
+#include <openssl/aes.h>
+#include <openssl/rand.h>
 
-using namespace std;
+#define AES_KEY_SIZE 32
+
+#pragma pack(push, 1)
 
 struct BMPFileHeader 
 {
@@ -38,21 +40,24 @@ struct BMPInfoHeader
 
 #pragma pack(pop)
 
-void error(const string& message)
+void error(const std::string& message)
 {
 	int err;
-    cout << message << "\n" << "Press any key and then enter to exit ...";
-    cin >> err;
-    cout << "Exiting...\n";
+    std::cout << message << "\n" << "Press any key and then enter to exit ...";
+    std::cin >> err;
+    std::cout << "Exiting...\n";
     exit(1);
 }
 
 struct BMP 
 {
-    // Constructor
-    BMP(string fname)
+    /// <summary>
+    /// Constructor for the BMP class. Reads the BMP file and the headers from the file.
+    /// </summary>
+    /// <param name="fname">: The name of the BMP file</param>
+    BMP(std::string fname)
     {
-        ifstream file(fname, ios_base::binary);
+        std::ifstream file(fname, std::ios_base::binary);
         if (!file)
         {
             error("Unable to open the input image file.");
@@ -105,31 +110,55 @@ struct BMP
         key = 0;
     }
 
-    // Encrypt text into image
-    void encrypt(string fname)
+    /// <summary>
+    /// Encrypts the text from the file and writes it to the image
+    /// </summary>
+    /// <param name="fname">: The name of the BMP-File to encrypt</param>
+    void encrypt(std::string fname)
     {
         read_text_from_file(fname);
-        generate_key();
+        
+        //generate_key();
+        
+        generate_aes_key();
         // Here the text is encrypted using the key from 'key'
-        encrypt_decrypt_data();
+        
+        //encrypt_decrypt_data();
+        
+        aes_encrypt();
+        
         write_text_to_img_data();
         write_image_out("encrypted.bmp");
     }
 
-    // Decrypt text from image
-    void decrypt(string fname)
+    /// <summary>
+    /// Decrypts the text from the image and writes it to a file
+    /// </summary>
+    /// <param name="fname">: The Name of the BMP-File to be decrypted</param>
+    void decrypt(std::string fname)
     {
-		read_key();
-		read_text_from_img_data();
+		//read_key();
+		
+        read_aes_key();
+        
+        read_text_from_img_data();
+        
         // Here the text is decrypted using the key from 'key' 
-        encrypt_decrypt_data();
+        
+        //encrypt_decrypt_data();
+        
+        aes_decrypt();
+
         write_text_out("decrypted.txt");
 	}
 
-    // Read text from file
-    void read_text_from_file(string fname)
+    /// <summary>
+    /// Read text from file and store it in the text variable
+    /// </summary>
+    /// <param name="fname">The text file from which the text is to be read</param>
+    void read_text_from_file(std::string fname)
     {
-		ifstream file(fname, ios_base::binary);
+        std::ifstream file(fname, std::ios_base::binary);
         if (!file)
         {
 			error("Unable to open the input file.");
@@ -145,10 +174,13 @@ struct BMP
 		file.close();
 	}
 
-    // Write text to file
-    void write_text_out(string fname)
+    /// <summary>
+    /// Write the text to a file
+    /// </summary>
+    /// <param name="fname">The name of the file to write the text to</param>
+    void write_text_out(std::string fname)
     {
-        ofstream file(fname, ios_base::binary);
+        std::ofstream file(fname, std::ios_base::binary);
         if (!file)
         {
 			error("Unable to open the output file.");
@@ -159,7 +191,10 @@ struct BMP
         file.close();
     }
 
-    // Write the text to the image data bitwise
+    /// <summary>
+    /// Write the text to the image data bitwise
+    /// </summary>
+    /// <param name="fname">The name of the file to write the text to</param>
     void write_text_to_img_data()
     {
         uint32_t text_size = text.size();
@@ -173,10 +208,10 @@ struct BMP
 		}
 
         // Every bit of the text is written in the image data
-        for (int i = 32; i < text_size + 32; i++)
+        for (uint32_t i = 32; i < text_size + 32; i++)
         {
             uint8_t byte = text[i - 32];
-            for (int j = 0; j < 8; j++)
+            for (uint32_t j = 0; j < 8; j++)
             {
                 if ((i * 8 + j) > data_size - 1)
                 {
@@ -191,30 +226,39 @@ struct BMP
         }
     }
 
+    /// <summary>
+    /// Read the text from the image data bitwise
+    /// </summary>
+    /// <param name="fname">The name of the file to write the text to</param>
     void read_text_from_img_data()
     {
-        int text_size = 0;
-		int data_size = img_data.size();
+        uint32_t text_size = 0;
+        uint32_t data_size = img_data.size();
 
-        for (int i = 0; i < 32; i++)
+        // Read the first 32 bits from the image data to determin how long the stored data in the image is.
+        for (uint32_t i = 0; i < 32; i++)
         {
 			text_size = text_size | ((img_data[i] & 1) << i);
 		}
 
-		text.resize(text_size);
+		text.resize(text_size + 32);
 
-        for (int i = 32, keyCount = 0; i < text_size + 32; i++)
+        for (uint32_t i = 32, keyCount = 0; i < text_size + 32; i++)
         {
-            for (int j = 0; j < 8; j++, keyCount = (keyCount + 1) % 64)
+            for (uint32_t j = 0; j < 8; j++, keyCount = (keyCount + 1) % 64)
             {
-                text[i - 32] = text[i - 32] | (((img_data[i * 8 + j] & 1)) << j);
+                text[i - 32] = text[i - 32] | (((img_data[i * 8 + j] & 1)));
 			}
 		}
     }
     
-    void write_image_out(string fname)
+    /// <summary>
+    /// Write the image data to a file
+    /// </summary>
+    /// <param name="fname">The name of the file to write the image data to</param>
+    void write_image_out(std::string fname)
     {
-        ofstream file(fname, ios_base::binary);
+        std::ofstream file(fname, std::ios_base::binary);
 		if (!file)
 		{
 			error("Unable to open the output image file.");
@@ -227,10 +271,20 @@ struct BMP
         file.close();
     }
 
+    /**********************************************************************
+    *
+    * Functions for generating/reading keys and encrypting/decrypting 
+    * vector<uint8_t> using encryption with XOR
+    *
+    **********************************************************************/
+
+    /// <summary>
+    /// Generates a random 64-bit key and writes it to a file
+    /// </summary>
     void generate_key()
     {
 		srand(time(0));
-        ofstream file("key", ios_base::binary);
+        std::ofstream file("key", std::ios_base::binary);
         if (!file)
         {
             error("Unable to open the output text file.");
@@ -248,9 +302,12 @@ struct BMP
         file.close();
 	}
 
+    /// <summary>
+    /// Reads a 64-bit key from a file and stores it in the key variable
+    /// </summary>
     void read_key()
     {
-        ifstream file("key", ios_base::binary);
+        std::ifstream file("key", std::ios_base::binary);
         if (!file)
         {
 			error("Unable to open the input text file.");
@@ -267,6 +324,9 @@ struct BMP
 		file.close();
     }
 
+    /// <summary>
+    /// Encrypts/decrypts the text using the key variable using XOR
+    /// </summary>
     void encrypt_decrypt_data()
     {
         for (int i = 0; i < text.size(); i++)
@@ -275,12 +335,168 @@ struct BMP
             key = (key >> 8) | (key << 56);
 		}
     }
+
+    /**********************************************************************
+    *
+    * Functions for generating/reading keys and encrypting/decrypting
+    * vector<uint8_t> using encryption with AES algorithm
+    *
+    **********************************************************************/
+
+    /// <summary>
+    /// Generates a random 256-bit AES key and writes it to a file
+    /// </summary>
+    void generate_aes_key() 
+    {       
+        aes_key.resize(AES_KEY_SIZE);
+        if (RAND_bytes(aes_key.data(), AES_KEY_SIZE) != 1) {
+            // Handle error if random byte generation fails
+            throw std::runtime_error("Failed to generate random key using OpenSSL RAND_bytes");
+        }
+
+        // Write the generated key to a file
+        std::ofstream file("aes_key", std::ios_base::binary);
+        if (!file) {
+			throw std::runtime_error("Failed to open file for writing AES key");
+		}
+        file.write((const char*)aes_key.data(), aes_key.size());
+		file.close();
+    }
+
+    /// <summary>
+    /// Reads a 256-bit AES key from a file and stores it in the aes_key variable
+    /// </summary>
+    void read_aes_key()
+    {
+        std::ifstream file("aes_key", std::ios_base::binary);
+        if (!file) {
+			throw std::runtime_error("Failed to open file for reading AES key");
+		}
+
+		aes_key.resize(AES_KEY_SIZE);
+		file.read((char*)aes_key.data(), aes_key.size());
+		file.close();
+	}
+
+    /// <summary>
+    /// Encrypts the text using the AES key stored in the aes_key variable using AES-256 encryption
+    /// </summary>
+    void aes_encrypt() 
+    {
+        // Check if the key length is appropriate
+        if (aes_key.size() != 16 && aes_key.size() != 24 && aes_key.size() != 32)
+        {
+            throw std::invalid_argument("Key length must be 16, 24, or 32 bytes.");
+        }
+
+        // Initialize OpenSSL cipher context
+        EVP_CIPHER_CTX* ctx;
+        if (!(ctx = EVP_CIPHER_CTX_new()))
+        {
+            throw std::runtime_error("Error creating EVP cipher context.");
+        }
+
+        // Initialize AES-256 encryption
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, aes_key.data(), NULL) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            throw std::runtime_error("Error initializing AES encryption.");
+        }
+
+        // Prepare output buffer
+        std::vector<uint8_t> ciphertext(text.size() + EVP_MAX_BLOCK_LENGTH);
+
+        // Encrypt plaintext
+        int len;
+        if (EVP_EncryptUpdate(ctx, ciphertext.data(), &len, text.data(), text.size()) != 1) 
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            throw std::runtime_error("Error performing AES encryption.");
+        }
+
+        // Finalize encryption
+        int ciphertext_len = len;
+        if (EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len) != 1) 
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            throw std::runtime_error("Error finalizing AES encryption.");
+        }
+
+        ciphertext_len += len;
+
+        // Resize the output buffer to actual ciphertext size
+        ciphertext.resize(ciphertext_len);
+
+        // Clean up
+        EVP_CIPHER_CTX_free(ctx);
+
+        text = ciphertext;
+    }
+
+    /// <summary>
+    /// Decrypts the text using the AES key stored in the aes_key variable using AES-256 decryption
+    /// </summary>
+    void aes_decrypt() 
+    {
+        // Check if the key length is appropriate
+        if (aes_key.size() != 16 && aes_key.size() != 24 && aes_key.size() != 32) 
+        {
+            throw std::invalid_argument("Key length must be 16, 24, or 32 bytes.");
+        }
+
+        // Initialize OpenSSL cipher context
+        EVP_CIPHER_CTX* ctx;
+        if (!(ctx = EVP_CIPHER_CTX_new())) 
+        {
+            throw std::runtime_error("Error creating EVP cipher context.");
+        }
+
+        // Initialize AES-256 decryption
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, aes_key.data(), NULL) != 1) 
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            throw std::runtime_error("Error initializing AES decryption.");
+        }
+
+        // Prepare output buffer
+        std::vector<uint8_t> plaintext(text.size() + EVP_MAX_BLOCK_LENGTH);
+
+        // Decrypt ciphertext
+        int len;
+        if (EVP_DecryptUpdate(ctx, plaintext.data(), &len, text.data(), text.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            throw std::runtime_error("Error performing AES decryption.");
+        }
+
+        // Finalize decryption
+        int plaintext_len = len;
+        if (EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            throw std::runtime_error("Error finalizing AES decryption.");
+        }
+
+        plaintext_len += len;
+
+        // Resize the output buffer to actual plaintext size
+        plaintext.resize(plaintext_len);
+
+        // Clean up
+        EVP_CIPHER_CTX_free(ctx);
+
+        text = plaintext;
+    }
    
     private:
+        // Data from the BMP file
         BMPFileHeader file_header;
         BMPInfoHeader info_header;
-        vector<uint8_t> img_data;
-        vector<uint8_t> text;
-        uint64_t key;
+        std::vector<uint8_t> img_data;
 
-};
+        // Text to encrypt/decrypt
+        std::vector<uint8_t> text;
+
+        // Keys for encryption/decryption
+        uint64_t key;
+        std::vector<uint8_t> aes_key;
+
+};JÜ$=5ë T¤« ¡Ê
