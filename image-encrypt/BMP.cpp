@@ -96,6 +96,7 @@ struct BMP
     /// Encrypts the text from the file and writes it to the image
     /// </summary>
     /// <param name="fname">: The name of the BMP-File to encrypt</param>
+    /// <param name="encryption_type">: The type of encryption to use</param>
     void encrypt(std::string fname, int encryption_type)
     {
         read_text_from_file(fname);
@@ -122,6 +123,7 @@ struct BMP
     /// Decrypts the text from the image and writes it to a file
     /// </summary>
     /// <param name="fname">: The Name of the BMP-File to be decrypted</param>
+    /// <param name="encryption_type">: The type of encryption to use</param>
     void decrypt(std::string fname, int encryption_type)
     {
         read_text_from_img_data();
@@ -185,7 +187,6 @@ struct BMP
     /// <summary>
     /// Write the text to the image data bitwise
     /// </summary>
-    /// <param name="fname">The name of the file to write the text to</param>
     void write_text_to_img_data()
     {
         uint32_t text_size = text.size();
@@ -223,7 +224,6 @@ struct BMP
     /// <summary>
     /// Read the text from the image data bitwise
     /// </summary>
-    /// <param name="fname">The name of the file to write the text to</param>
     void read_text_from_img_data()
     {
         uint32_t text_size = 0;
