@@ -1,50 +1,24 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <cstdlib>
-#include <random>
+/*
+    Copyright (c) 2024 Mark Narain Enzinger
 
-#include <openssl/aes.h>
-#include <openssl/rand.h>
+    MIT License (https://github.com/marknarain/image-encrypt/blob/main/LICENSE)
+*/
 
-#define AES_KEY_SIZE 32
+#include "image-encrypt.h"
 
-#pragma pack(push, 1)
+void error(const std::string& message) {
+    std::cout << message << "\a\n" << "Press enter to exit ...";
 
-struct BMPFileHeader 
-{
-    uint16_t file_type{ 0x4D42 };               // File type always BM which is 0x4D42
-    uint32_t file_size{ 0 };                    // Size of the file (in bytes)
-    uint16_t reserved1{ 0 };                    // Reserved, always 0
-    uint16_t reserved2{ 0 };                    // Reserved, always 0
-    uint32_t offset_data{ 0 };                  // Start position of pixel data (bytes from the beginning of the file)
-};
+    char ch;
 
-struct BMPInfoHeader 
-{
-    uint32_t size{ 0 };                         // Size of this header (in bytes)
-    int32_t width{ 0 };                         // width of bitmap in pixels
-    int32_t height{ 0 };                        // width of bitmap in pixels
-    //       (if positive, bottom-up, with origin in lower left corner)
-    //       (if negative, top-down, with origin in upper left corner)
-    uint16_t planes{ 1 };                       // No. of planes for the target device, this is always 1
-    uint16_t bit_count{ 0 };                    // No. of bits per pixel
-    uint32_t compression{ 0 };                  // 0 or 3 - uncompressed. THIS PROGRAM CONSIDERS ONLY UNCOMPRESSED BMP images
-    uint32_t size_image{ 0 };                   // 0 - for uncompressed images
-    int32_t x_pixels_per_meter{ 0 };
-    int32_t y_pixels_per_meter{ 0 };
-    uint32_t colors_used{ 0 };                  // No. color indexes in the color table. Use 0 for the max number of colors allowed by bit_count
-    uint32_t colors_important{ 0 };             // No. of colors used for displaying the bitmap. If 0 all colors are required
-};
+    // Read a character using cin.get()
+    std::cin.get(ch);
 
-#pragma pack(pop)
+    // Consume any remaining newline 
+    if (std::cin.peek() == '\n') {
+        std::cin.get(); // Discard the newline character
+    }
 
-void error(const std::string& message)
-{
-	int err;
-    std::cout << message << "\n" << "Press any key and then enter to exit ...";
-    std::cin >> err;
     std::cout << "Exiting...\n";
     exit(1);
 }
@@ -93,20 +67,28 @@ struct BMP
         int byte_count = info_header.bit_count / 8;
 
         // Calculate the padding for each row in the image. There are zeroes at the end of each row for line break. 
-        // Each row must have an even number of bytes. Thats why there are 2 zeroes if the number of pixels per row is even and one if it is odd.
-        int new_line_len = width % 2 == 0 ? 2 : 1;
+        // The padding is necessary to ensure that the data of each row starts at a multiple of 4 bytes.
+        padding = ((-width & byte_count));
 
         // For each row of pixels, there is a width and the number of zeroes at the end of the row. 
-        int data_size = (width * height * byte_count) + (new_line_len * height);
+        int data_size = (width * height * byte_count) + (padding * height);
 
         img_data.resize(data_size);
 
         file.seekg(file_header.offset_data, file.beg);
-        file.read((char*)img_data.data(), img_data.size());
+
+        for (int i = 0; i < height; i++)
+        {
+			// Read the data row by row
+			file.read((char*)(img_data.data() + (width * byte_count + padding) * i), width * byte_count);
+			
+            // Skip the padding. Cur means that the seekg should happen relative to the current position in the file.
+            file.seekg(padding, std::ios_base::cur);
+		}
 
         file.close();
 
-        // We initialize the key, so that we can check if it is generated.
+        // We initialize the key, so that we can check if it was generated later.
         key = 0;
     }
 
@@ -114,18 +96,23 @@ struct BMP
     /// Encrypts the text from the file and writes it to the image
     /// </summary>
     /// <param name="fname">: The name of the BMP-File to encrypt</param>
-    void encrypt(std::string fname)
+    void encrypt(std::string fname, int encryption_type)
     {
         read_text_from_file(fname);
-        
-        //generate_key();
-        
-        generate_aes_key();
-        // Here the text is encrypted using the key from 'key'
-        
-        //encrypt_decrypt_data();
-        
-        aes_encrypt();
+
+        switch (encryption_type)
+        {
+            case 1:
+				generate_aes_key();
+				aes_encrypt();
+				break;
+			case 2:
+				generate_key();
+				encrypt_decrypt_data();
+				break;
+			default:
+				error("Invalid encryption type");
+        }   
         
         write_text_to_img_data();
         write_image_out("encrypted.bmp");
@@ -135,21 +122,25 @@ struct BMP
     /// Decrypts the text from the image and writes it to a file
     /// </summary>
     /// <param name="fname">: The Name of the BMP-File to be decrypted</param>
-    void decrypt(std::string fname)
+    void decrypt(std::string fname, int encryption_type)
     {
-		//read_key();
-		
-        read_aes_key();
-        
         read_text_from_img_data();
-        
-        // Here the text is decrypted using the key from 'key' 
-        
-        //encrypt_decrypt_data();
-        
-        aes_decrypt();
 
-        write_text_out("decrypted.txt");
+        switch (encryption_type)
+        {
+            case 1:
+                read_aes_key();
+                aes_decrypt();
+                break;
+            case 2:
+                read_key();
+				encrypt_decrypt_data();
+				break;
+            default:
+                error("Invalid encryption type");
+        }
+
+        write_text_out(fname);
 	}
 
     /// <summary>
@@ -199,6 +190,7 @@ struct BMP
     {
         uint32_t text_size = text.size();
         uint32_t data_size = img_data.size();
+        uint32_t max_text_size = (data_size - 64) / 8;
 
         // We write the size of the text in the first 32 bytes of the image data
         for (int i = 0; i < 32; i++)
@@ -206,6 +198,8 @@ struct BMP
 			uint8_t bit = (text_size >> i) & 1;
 			img_data[i] = (img_data[i] & 0xFE) | bit;
 		}
+
+        if (text_size * 8 )
 
         // Every bit of the text is written in the image data
         for (uint32_t i = 32; i < text_size + 32; i++)
@@ -241,6 +235,11 @@ struct BMP
 			text_size = text_size | ((img_data[i] & 1) << i);
 		}
 
+        if (text_size > data_size - 32)
+        {
+			error("The data in the image is corrupted");
+		}
+
 		text.resize(text_size + 32);
 
         for (uint32_t i = 32; i < text_size + 32; i++)
@@ -266,7 +265,12 @@ struct BMP
 
 		file.write((const char*)&file_header, sizeof(file_header));
 		file.write((const char*)&info_header, sizeof(info_header));
-        file.write((const char*)img_data.data(), img_data.size());
+        
+        for (int i = 0; i < info_header.height; i++)
+        {
+			file.write((const char*)(img_data.data() + (info_header.width * 3 + padding) * i), info_header.width * 3);
+			file.seekp(padding, std::ios_base::cur);
+		}
 
         file.close();
     }
@@ -310,7 +314,7 @@ struct BMP
         std::ifstream file("key", std::ios_base::binary);
         if (!file)
         {
-			error("Unable to open the input text file.");
+			error("Unable to open the key file.");
 		}
 
 		uint8_t mask = 0xFF;
@@ -349,14 +353,15 @@ struct BMP
     void generate_aes_key() 
     {       
         aes_key.resize(AES_KEY_SIZE);
-        if (RAND_bytes(aes_key.data(), AES_KEY_SIZE) != 1) {
-            // Handle error if random byte generation fails
+        if (RAND_bytes(aes_key.data(), AES_KEY_SIZE) != 1) 
+        {
             throw std::runtime_error("Failed to generate random key using OpenSSL RAND_bytes");
         }
 
         // Write the generated key to a file
         std::ofstream file("aes_key", std::ios_base::binary);
-        if (!file) {
+        if (!file)
+        {
 			throw std::runtime_error("Failed to open file for writing AES key");
 		}
         file.write((const char*)aes_key.data(), aes_key.size());
@@ -369,7 +374,8 @@ struct BMP
     void read_aes_key()
     {
         std::ifstream file("aes_key", std::ios_base::binary);
-        if (!file) {
+        if (!file) 
+        {
 			throw std::runtime_error("Failed to open file for reading AES key");
 		}
 
@@ -484,6 +490,7 @@ struct BMP
         BMPFileHeader file_header;
         BMPInfoHeader info_header;
         std::vector<uint8_t> img_data;
+        uint8_t padding;
 
         // Text to encrypt/decrypt
         std::vector<uint8_t> text;

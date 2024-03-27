@@ -3,33 +3,75 @@
 
 int main()
 {
-	std::string pictureName;
-	std::string fileName;
-	std::string outputName;
+	std::string pictureName = "input-image.bmp";
+	std::string fileName = "input-text.txt";
+	std::string outputName = "output-text.txt";
 	int choice;
 
-	std::cout << "image-encrypt" << "\n";
-	std::cout << "Enter picture name: ";
-	std::cin >> pictureName;
-	BMP bmp(pictureName);
-	
-	std::cout << "Enter 0 to encrypt or 1 to decrypt: ";
-	std::cin >> choice;
+	std::cout << "\033[1m\033[4m" << "> image-encrypt <" << "\033[0m\033[24m" << "\n";
+	std::cout << "This program encrypts a file into a picture or decrypts a file from a picture" << "\n";
+	std::cout << "Choose a option from the following menu: " << "\n"; 
+	std::cout << "1: Encrypt" << "\n";
+	std::cout << "2: Decrypt" << "\n";
+	std::cout << "3: Guide" << "\n";
+	std::cout << "4: Exit" << "\n\n";
 
-	if (choice == 0)
+	std::cin >> choice;
+	int encryption_type;
+
+	system("cls");
+	switch (choice)
 	{
-		std::cout << "Enter the name of the file you want to encrypt: ";
-		std::cin >> fileName;
-		bmp.encrypt(fileName);
-	}
-	else if (choice == 1)
-	{
-		std::cout << "Make sure there is a file named 'key' in the same directory" << "\n";
-		bmp.decrypt(fileName);
-	}
-	else
-	{
-		std::cout << "Invalid input";
+		case 1:
+			std::cout << "Enter the name of your picture: ";
+			std::cin >> pictureName;
+			{
+				BMP bmp(pictureName);
+				std::cout << "Enter the name of the file you want to encrypt: ";
+				std::cin >> fileName;
+
+				std::cout << "Which encryption do you want to use?" << "\n";
+				std::cout << "1: AES" << "\n";
+				std::cout << "2: XOR" << "\n";
+
+				std::cin >> encryption_type;
+
+				bmp.encrypt(fileName, encryption_type);
+			}
+			break;
+
+		case 2:
+			std::cout << "Enter the name of your picture: ";
+			std::cin >> pictureName;
+			{
+				BMP bmp(pictureName);
+				std::cout << "How should the output be named: ";
+				std::cin >> fileName;
+
+				std::cout << "Which encryption do you want to use?" << "\n";
+				std::cout << "1: AES" << "\n";
+				std::cout << "2: XOR" << "\n";
+
+				std::cin >> encryption_type;
+
+				bmp.decrypt(fileName, encryption_type);
+			}
+			break;
+
+		case 3:
+			std::cout << "\033[1m\033[4m" << "Guide" << "\033[0m\033[24m" << "\n";
+			std::cout << "To encrypt a file into a picture, place the image and the file in the same dirctory with this program." << "\n";
+			std::cout << "To decrypt an image, place the image and the key file in the same directory with this program." << "\n";
+			std::cout << "The key file is generated when you encrypt a file." << "\n";
+			break; 
+
+		case 4:
+			std::cout << "Exiting program ..." << "\n";
+			break;
+
+		default:
+			std::cout << "\aInvalid input" << "\n";
+			break;
 	}
 
 	return 0;
