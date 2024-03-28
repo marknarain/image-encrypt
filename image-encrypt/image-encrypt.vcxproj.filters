@@ -19,10 +19,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="image-encrypt.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="crc32.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

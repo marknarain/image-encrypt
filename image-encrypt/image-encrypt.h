@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <random>
 #include <cstdint>
+#include <cstdio>
 
 #include <openssl/aes.h>
 #include <openssl/rand.h>
@@ -52,8 +53,33 @@ struct BMPInfoHeader
 
 struct BMP
 {
+    BMP(std::string fname);
+    void encrypt(std::string fname, int encryption_type);
+    void decrypt(std::string fname, int encryption_type);
+    void read_text_from_file(std::string fname);
+    void write_text_out(std::string fname);
+    void write_text_to_img_data();
+    void read_text_from_img_data();
+    void write_image_out(std::string fname);
+    void generate_key();
+    void read_key();
+    void encrypt_decrypt_data();
+    void generate_aes_key();
+    void read_aes_key();
+    void aes_encrypt();
+    void aes_decrypt();
 
+    private:
+        // Data from the BMP file
+        BMPFileHeader file_header;
+        BMPInfoHeader info_header;
+        std::vector<uint8_t> img_data;
+        uint8_t padding;
+
+        // Text to encrypt/decrypt
+        std::vector<uint8_t> text;
+
+        // Keys for encryption/decryption
+        uint64_t key;
+        std::vector<uint8_t> aes_key;
 };
-
-uint32_t calculate_crc32(const std::vector<uint8_t>& data);
-void error(const std::string& message);

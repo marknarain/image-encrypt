@@ -130,7 +130,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="crc32.cpp" />
     <ClCompile Include="image-encrypt.h" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
