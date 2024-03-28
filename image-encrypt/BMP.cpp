@@ -4,6 +4,7 @@
     MIT License (https://github.com/marknarain/image-encrypt/blob/main/LICENSE)
 */
 
+#pragma once
 #include "image-encrypt.h"
 
 void error(const std::string& message) {
