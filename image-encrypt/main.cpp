@@ -1,3 +1,9 @@
+/*
+	Copyright (c) 2024 Mark Narain Enzinger
+
+	MIT License (https://github.com/marknarain/image-encrypt/blob/main/LICENSE)
+*/
+
 #include "image-encrypt.h"
 #include "BMP.cpp"
 

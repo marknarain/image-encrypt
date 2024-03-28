@@ -1,3 +1,9 @@
+/*
+    Copyright (c) 2024 Mark Narain Enzinger
+
+    MIT License (https://github.com/marknarain/image-encrypt/blob/main/LICENSE)
+*/
+
 #pragma once
 
 #include <iostream>
@@ -6,9 +12,11 @@
 #include <vector>
 #include <cstdlib>
 #include <random>
+#include <cstdint>
 
 #include <openssl/aes.h>
 #include <openssl/rand.h>
+#include <openssl/evp.h>
 
 #define AES_KEY_SIZE 32
 
@@ -41,3 +49,11 @@ struct BMPInfoHeader
 };
 
 #pragma pack(pop)
+
+struct BMP
+{
+
+};
+
+uint32_t calculate_crc32(const std::vector<uint8_t>& data);
+void error(const std::string& message);
