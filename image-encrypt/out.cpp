@@ -330,7 +330,7 @@ void BMP::read_text_from_img_data()
 
     if (crc_read != crc_expected)
     {
-        error("The data in the image is corrupted or was manipulated");
+        error("The data in the image is corrupted");
     }
 
     text.resize(text_size);

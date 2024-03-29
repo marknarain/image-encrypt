@@ -39,6 +39,7 @@ int main()
 				std::cout << "Which encryption do you want to use?" << "\n";
 				std::cout << "1: AES" << "\n";
 				std::cout << "2: XOR" << "\n";
+				std::cout << "3: None" << "\n";
 
 				std::cin >> encryption_type;
 
@@ -57,6 +58,7 @@ int main()
 				std::cout << "Which encryption do you want to use?" << "\n";
 				std::cout << "1: AES" << "\n";
 				std::cout << "2: XOR" << "\n";
+				std::cout << "3: None" << "\n";
 
 				std::cin >> encryption_type;
 
